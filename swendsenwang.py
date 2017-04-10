@@ -74,7 +74,7 @@ class swendsenwang:
         :param bond_vertical: vertical bond matrix, (i,j) meaning the bond connecting (i,j) and (i+1,j).
         :param bond_horizontal: horizontal bond matrix, (i,j) meaning the bond connecting (i,j) and (i,j+1).
         :param cluster_ith: the ith cluster to label
-        :return:
+        :return: updated labels
         """
         labelsnew=labels.copy()
         Nx,Ny=bond_vertical.shape
@@ -88,7 +88,6 @@ class swendsenwang:
         else:
             pass
         return labelsnew
-
 
 
     def flip_cluster(self,cluster_dict,spin_config):
@@ -162,16 +161,14 @@ class swendsenwang:
 
         return magnetization
 
-
-
     def time_correlation(self):
         pass
 
 @functimer
 def main():
-    Hamiltonian=Ising2D.Ising2D(nxspins=8,nyspins=8,J=1,hfield=0)
+    Hamiltonian=Ising2D.Ising2D(nxspins=10,nyspins=10,J=1,hfield=0)
     MC_Ising2D=swendsenwang(Hamiltonian,temperature=2.27,nsteps=100)
-    spin_sample=(2*np.random.binomial(1,p=0.5,size=(10,8,8))-1)
+    spin_sample=(2*np.random.binomial(1,p=0.5,size=(1,10,10))-1)
     spin_sample_chain=MC_Ising2D.gibbs_sampling(spin_sample)
     energy,energy_erro=MC_Ising2D.measure_energy(Hamiltonian,spin_sample_chain)
     magnetization=MC_Ising2D.measure_magnetization(spin_sample_chain)
