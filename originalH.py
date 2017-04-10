@@ -109,7 +109,7 @@ class originalH:
                 new_spin_sample[site_x,site_y]=-new_spin_sample[site_x,site_y]
         return new_spin_sample
 
-    @functimer
+
     def spin_chain_generation(self,temperature,init_sampleset,nstep,k):
         """
 
@@ -125,16 +125,20 @@ class originalH:
 
         return spin_chain
 
-def energyVsCorrelation(temperature,K,Nx,Ny,mcsetN):
+@functimer
+def energyVsCorrelation(temperature,K,Nx,Ny,mcsetN,spin_chain=None):
     """
 
     :param temperature:
     :param K:
     :return:
     """
-    HMC=originalH(1,K=K,Nx=Nx,Ny=Ny,pbc=1)
-    init_sampleset=(2*np.random.binomial(1,0.5,size=(mcsetN,Nx,Ny))-1)
-    spin_chain=HMC.spin_chain_generation(temperature=temperature,init_sampleset=init_sampleset,nstep=1000,k=Nx*Ny)
+    if spin_chain==None:
+        HMC=originalH(1,K=K,Nx=Nx,Ny=Ny,pbc=1)
+        init_sampleset=(2*np.random.binomial(1,0.5,size=(mcsetN,Nx,Ny))-1)
+        spin_chain=HMC.spin_chain_generation(temperature=temperature,init_sampleset=init_sampleset,nstep=1000,k=Nx*Ny)
+    else:
+        HMC=originalH(1,K=K,Nx=Nx,Ny=Ny,pbc=1)
     data_count_init=100
     energy=np.array([HMC.measure_energy(spin_sample) for spin_sample in spin_chain[data_count_init:]])
     correlation1=np.array([HMC.correlation_k(1,spin_sample) for spin_sample in spin_chain[data_count_init:]])
