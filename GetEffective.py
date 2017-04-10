@@ -36,7 +36,8 @@ class geteffectiveH:
         hightemperature=temperaturelist[0]
         Jlist=self.fit_originalHsample(hightemperature,K,mcsetN)
         for temperature in temperaturelist[1:]:
-            energy,correlations=wolff.energyVsCorrelation(temperature,Jlist[0],self.Nx,self.Ny,mcsetN)
+            spinsample_chain=wolff.spinsample_chain(temperature,Jlist[0],self.Nx,self.Ny,mcsetN)
+            energy,correlations=originalH.energyVsCorrelation(temperature,K,self.Nx,self.Ny,mcsetN,spinsample_chain)
             Jlist=np.linalg.lstsq(correlations,energy)[0]
 
         return Jlist
