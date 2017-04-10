@@ -4,7 +4,7 @@ class Ising2D:
     """
     Ising 2D system, giving the systems size, transverse field strength, periodic boundary condition
     """
-    def __init__(self,nxspins,nyspins,J,hfield,pbc=1):
+    def __init__(self,nxspins,nyspins,J,hfield=0,pbc=1):
         """
 
         """
