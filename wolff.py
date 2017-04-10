@@ -184,6 +184,22 @@ def energyVsCorrelation(temperature,J,Nx,Ny,mcsetN):
     correlations=np.array([correlation1,correlation2,correlation3])
     return energy,correlations.transpose()
 
+def spinsample_chain(temperature,J,Nx,Ny,mcsetN):
+    """
+
+    :param temperature:
+    :param Nx:
+    :param Ny:
+    :return:
+    """
+    Hamiltonian=Ising2D.Ising2D(nxspins=Nx,nyspins=Ny,J=J)
+    spin_sampleset=(2*np.random.binomial(1,p=0.5,size=(mcsetN,10,10))-1)
+    MC_Wolff=wolff(temperature,Hamiltonian=Hamiltonian,init_sample=spin_sampleset)
+    data_count_init=100
+    spin_chain=MC_Wolff.markov_chain_sample(k=Nx*Ny)
+    return spin_chain
+
+
 
 @functimer
 def main():
