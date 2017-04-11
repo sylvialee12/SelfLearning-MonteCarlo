@@ -40,12 +40,13 @@ class slmc(wolff.wolff):
             neighbor,neighborbond=self.bond_neighbor(site[0],site[1],spin_sample)
             nearest_neighbor+=neighbor
         effective_neighbor=list(filter(lambda x:x not in cluster,nearest_neighbor))
+        effective_neighbor=list(set(effective_neighbor))
         delta_energy_effetive=2*self.J*sum([spin_sample[cluster[0]]*spin_sample[site]
                                             for site in effective_neighbor])
-        energy0=self.Hreal.measure_energy_singlesample(spin_sample)
-        energy1=self.Hreal.measure_energy_singlesample(spin_sample_new)
+        energy0=self.Hreal.measure_energy_singlesample(spin_sample)*self.Nx*self.Ny
+        energy1=self.Hreal.measure_energy_singlesample(spin_sample_new)*self.Nx*self.Ny
         rn=np.random.rand()
-        if np.exp((energy1-energy0)-delta_energy_effetive)>rn:
+        if np.exp(-1/self.temperature*((energy1-energy0)-delta_energy_effetive))>rn:
             return spin_sample_new
         else:
             return spin_sample
@@ -80,7 +81,7 @@ def main(J,K,Nx,Ny,temperature,mcsetN,Jeff=None):
     initsampleset=2*np.random.binomial(1,p=0.5,size=(mcsetN,Nx,Ny))-1
     simulator=slmc(temperature,effetiveH,initsampleset,Hreal)
     spin_chain1=simulator.markov_chain_sample(k=1)
-    spin_chain2=Hreal.spin_chain_generation(temperature,initsampleset)
+    spin_chain2=Hreal.spin_chain_generation(temperature,initsampleset,k=100)
     energy1_list=np.array([Hreal.measure_energy(spin_sampleset) for spin_sampleset in spin_chain1])
     energy2_list=np.array([Hreal.measure_energy(spin_sampleset) for spin_sampleset in spin_chain2])
     tau_correlation1=originalH.time_correlation(spin_chain1)
@@ -103,6 +104,8 @@ def loaddata(filename):
 def visulizedata():
     energy1=loaddata("data/energy1.txt")
     energy2=loaddata("data/energy2.txt")
+    print(energy1)
+    print(energy2)
     tau_correlation1=loaddata("data/correlation1.txt")
     tau_correlation2=loaddata("data/correlation2.txt")
     plt.figure("Energy")
@@ -114,30 +117,12 @@ def visulizedata():
     plt.plot(tau_correlation2)
     plt.savefig("data/Autocorrealation.png")
 
-
 main(J=1,
      K=0.2,
      Nx=10,
      Ny=10,
      temperature=2.49,
-     mcsetN=50,
-     Jeff=1.1031)
+     mcsetN=20,
+     Jeff=1.103)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+visulizedata()
