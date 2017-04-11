@@ -2,8 +2,11 @@ __author__ = 'xlibb'
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from scipy import stats
+
 
 def functimer(func):
+
     def wrapper(*args,**kwargs):
         t0=time.time()
         result=func(*args,**kwargs)
@@ -34,15 +37,18 @@ class originalH:
 
     def measure_energy(self,spin_sampleset):
         """
-        Measure energy from single spin sample
-        :param spin_sample: classical spin configuration
+        Measure energy for whole spin sample set
+        :param spin_sampleset: classical spin configuration
         :return: energy get from single spin sample
         """
-        left_shift1_sampleset=np.array([np.concatenate((spin_sample[1:,:],self.pbc*np.expand_dims(spin_sample[0,:],axis=0)),axis=0)\
+        left_shift1_sampleset=np.array([np.concatenate((spin_sample[1:,:],
+                                                        self.pbc*np.expand_dims(spin_sample[0,:],axis=0)),axis=0)
                                         for spin_sample in spin_sampleset])
-        up_shift1_sampleset=np.array([np.concatenate((spin_sample[:,1:],self.pbc*np.expand_dims(spin_sample[:,0],axis=1)),axis=1)\
+        up_shift1_sampleset=np.array([np.concatenate((spin_sample[:,1:],
+                                                      self.pbc*np.expand_dims(spin_sample[:,0],axis=1)),axis=1)
                                       for spin_sample in spin_sampleset])
-        upleft_shift_sampleset=np.array([np.concatenate((left_shift1_sample[:,1:],self.pbc*np.expand_dims(left_shift1_sample[:,0],axis=1)),axis=1)\
+        upleft_shift_sampleset=np.array([np.concatenate((left_shift1_sample[:,1:],
+                                                         self.pbc*np.expand_dims(left_shift1_sample[:,0],axis=1)),axis=1)
                                       for left_shift1_sample in left_shift1_sampleset])
 
         energy_nearest=-self.J*np.mean(left_shift1_sampleset*spin_sampleset+up_shift1_sampleset*spin_sampleset)
@@ -50,6 +56,22 @@ class originalH:
 
         return energy_nearest+energy_fourbody
 
+    def measure_energy_singlesample(self,spin_sample):
+        """
+
+        :param spin_sample:
+        :return:
+        """
+        left_shift1_sample=np.concatenate((spin_sample[1:,:],
+                                                        self.pbc*np.expand_dims(spin_sample[0,:],axis=0)),axis=0)
+        up_shift1_sample=np.concatenate((spin_sample[:,1:],
+                                                      self.pbc*np.expand_dims(spin_sample[:,0],axis=1)),axis=1)
+        upleft_shift_sample=np.concatenate((left_shift1_sample[:,1:],
+                                                         self.pbc*np.expand_dims(left_shift1_sample[:,0],axis=1)),axis=1)
+
+        energy_nearest=-self.J*np.mean(left_shift1_sample*spin_sample+up_shift1_sample*spin_sample)
+        energy_fourbody=-self.K*np.mean(left_shift1_sample*spin_sample*up_shift1_sample*upleft_shift_sample)
+        return energy_nearest+energy_fourbody
 
     def correlation_k(self,k,spin_sampleset):
         """
@@ -57,8 +79,10 @@ class originalH:
         :param spin_sample:
         :return:
         """
-        left_shiftk_sampleset=np.array([np.concatenate((spin_sample[k:,:],self.pbc*spin_sample[0:k,:]),axis=0) for spin_sample in spin_sampleset])
-        up_shiftk_sampleset=np.array([np.concatenate((spin_sample[:,k:],self.pbc*spin_sample[:,0:k]),axis=1) for spin_sample in spin_sampleset])
+        left_shiftk_sampleset=np.array([np.concatenate((spin_sample[k:,:],self.pbc*spin_sample[0:k,:]),axis=0)
+                                        for spin_sample in spin_sampleset])
+        up_shiftk_sampleset=np.array([np.concatenate((spin_sample[:,k:],self.pbc*spin_sample[:,0:k]),axis=1)
+                                      for spin_sample in spin_sampleset])
         correlation=np.mean(left_shiftk_sampleset*spin_sampleset+up_shiftk_sampleset*spin_sampleset)
         return correlation
 
@@ -68,9 +92,12 @@ class originalH:
         :param spin_sample:
         :return:
         """
-        left_shift_sampleset=np.array([np.concatenate((spin_sample[1:,:],self.pbc*spin_sample[0:1,:]),axis=0) for spin_sample in spin_sampleset])
-        up_leftshift_sampleset=np.array([np.concatenate((left_shift_sample[:,1:],self.pbc*left_shift_sample[:,0:1]),axis=1) for left_shift_sample in left_shift_sampleset])
-        dn_leftshift_sampleset=np.array([np.concatenate((left_shift_sample[:,-1:],left_shift_sample[:,:-1]),axis=1) for left_shift_sample in left_shift_sampleset])
+        left_shift_sampleset=np.array([np.concatenate((spin_sample[1:,:],self.pbc*spin_sample[0:1,:]),axis=0)
+                                       for spin_sample in spin_sampleset])
+        up_leftshift_sampleset=np.array([np.concatenate((left_shift_sample[:,1:],self.pbc*left_shift_sample[:,0:1]),axis=1)
+                                         for left_shift_sample in left_shift_sampleset])
+        dn_leftshift_sampleset=np.array([np.concatenate((left_shift_sample[:,-1:],left_shift_sample[:,:-1]),axis=1)
+                                         for left_shift_sample in left_shift_sampleset])
         correlation=np.mean(spin_sampleset*up_leftshift_sampleset+spin_sampleset*dn_leftshift_sampleset)
         return correlation
 
@@ -109,8 +136,8 @@ class originalH:
                 new_spin_sample[site_x,site_y]=-new_spin_sample[site_x,site_y]
         return new_spin_sample
 
-
-    def spin_chain_generation(self,temperature,init_sampleset,nstep,k):
+    @functimer
+    def spin_chain_generation(self,temperature,init_sampleset,nstep=1000,k=1):
         """
 
         :return:
@@ -120,13 +147,27 @@ class originalH:
         for i in range(nstep):
             spin_chain.append(spin_sampleset)
             for j in range(k):
-                new_spin_sampleset=np.array([self.local_update_onestep(temperature,spin_sample) for spin_sample in spin_sampleset])
+                new_spin_sampleset=np.array([self.local_update_onestep(temperature,spin_sample)
+                                             for spin_sample in spin_sampleset])
                 spin_sampleset=new_spin_sampleset
 
         return spin_chain
 
+
+def time_correlation(spin_chainset):
+    """
+    A method to visualize time correlation of the Markov Chain
+    """
+    initsampleset=spin_chainset[0]
+    timecorrelation=[]
+    for sampleset in spin_chainset:
+        timecorrelation.append(np.mean(initsampleset*sampleset)-np.mean(initsampleset)*np.mean(sampleset))
+    return timecorrelation
+
+
+
 @functimer
-def energyVsCorrelation(temperature,K,Nx,Ny,mcsetN,spin_chain=None):
+def energyVsCorrelation(temperature,J,K,Nx,Ny,mcsetN,spin_chain=None):
     """
 
     :param temperature:
@@ -134,11 +175,11 @@ def energyVsCorrelation(temperature,K,Nx,Ny,mcsetN,spin_chain=None):
     :return:
     """
     if spin_chain==None:
-        HMC=originalH(1,K=K,Nx=Nx,Ny=Ny,pbc=1)
+        HMC=originalH(J=J,K=K,Nx=Nx,Ny=Ny,pbc=1)
         init_sampleset=(2*np.random.binomial(1,0.5,size=(mcsetN,Nx,Ny))-1)
-        spin_chain=HMC.spin_chain_generation(temperature=temperature,init_sampleset=init_sampleset,nstep=1000,k=Nx*Ny)
+        spin_chain=HMC.spin_chain_generation(temperature=temperature,init_sampleset=init_sampleset,nstep=1000,k=10)
     else:
-        HMC=originalH(1,K=K,Nx=Nx,Ny=Ny,pbc=1)
+        HMC=originalH(J=J,K=K,Nx=Nx,Ny=Ny,pbc=1)
     data_count_init=100
     energy=np.array([HMC.measure_energy(spin_sample) for spin_sample in spin_chain[data_count_init:]])
     correlation1=np.array([HMC.correlation_k(1,spin_sample) for spin_sample in spin_chain[data_count_init:]])
@@ -147,7 +188,13 @@ def energyVsCorrelation(temperature,K,Nx,Ny,mcsetN,spin_chain=None):
     correlations=np.array([correlation1,correlation2,correlation3])
     return energy,correlations.transpose()
 
-if __name__=="__main__":
-    energy,correlations=energyVsCorrelation(2.5,K=0.2,Nx=10,Ny=10,mcsetN=50)
-    print(np.linalg.lstsq(correlations,energy))
 
+
+if __name__=="__main__":
+    energy,correlations=energyVsCorrelation(3,K=0.2,Nx=10,Ny=10,mcsetN=150)
+    A=np.hstack([correlations[:,0:1],np.ones((len(correlations),1))])
+    print(np.linalg.lstsq(A,energy))
+    # print(stats.linregress(A,energy))
+    plt.figure()
+    plt.plot(energy)
+    plt.show()
