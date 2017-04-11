@@ -84,16 +84,17 @@ class wolff:
         """
         :return:
         """
-        index_x=np.random.randint(0,self.Nx)
-        index_y=np.random.randint(0,self.Ny)
+
         spin_sample_new=[]
         for spin_i in spin_sample:
+            index_x=np.random.randint(0,self.Nx)
+            index_y=np.random.randint(0,self.Ny)
             cluster=[]
             self.single_cluster(index_x,index_y,spin_i,cluster)
             spin_sample_new.append(self.flip_cluster(cluster,spin_i))
         return np.array(spin_sample_new)
 
-
+    @functimer
     def markov_chain_sample(self,k=1):
         """
         Generate a spin sample chain every k step
@@ -101,11 +102,11 @@ class wolff:
         :return:
         """
         spin_sample_chain=[]
-        spin_sample=self.init_sample.copy()
+        spin_sampleset=self.init_sample.copy()
         for i in range(self.nsteps):
-            spin_sample_chain.append(spin_sample)
+            spin_sample_chain.append(spin_sampleset)
             for j in range(k):
-                spin_sample=self.one_whole_step(spin_sample)
+                spin_sampleset=self.one_whole_step(spin_sampleset)
         return spin_sample_chain
 
 
@@ -164,6 +165,7 @@ class wolff:
         Nt=len(spin_sample_chain)
         pass
 
+@functimer
 def energyVsCorrelation(temperature,J,Nx,Ny,mcsetN):
     """
 
@@ -173,10 +175,10 @@ def energyVsCorrelation(temperature,J,Nx,Ny,mcsetN):
     :return:
     """
     Hamiltonian=Ising2D.Ising2D(nxspins=Nx,nyspins=Ny,J=J)
-    spin_sampleset=(2*np.random.binomial(1,p=0.5,size=(mcsetN,10,10))-1)
+    spin_sampleset=(2*np.random.binomial(1,p=0.5,size=(mcsetN,Nx,Ny))-1)
     MC_Wolff=wolff(temperature,Hamiltonian=Hamiltonian,init_sample=spin_sampleset)
     data_count_init=100
-    spin_chain=MC_Wolff.markov_chain_sample(k=Nx*Ny)
+    spin_chain=MC_Wolff.markov_chain_sample(k=2)
     energy=MC_Wolff.measure_energy(spin_chain[data_count_init:])
     correlation1=np.array([MC_Wolff.correlation_k(1,spin_sample) for spin_sample in spin_chain[data_count_init:]])
     correlation2=np.array([MC_Wolff.correlation_2(spin_sample) for spin_sample in spin_chain[data_count_init:]])
@@ -184,6 +186,7 @@ def energyVsCorrelation(temperature,J,Nx,Ny,mcsetN):
     correlations=np.array([correlation1,correlation2,correlation3])
     return energy,correlations.transpose()
 
+@functimer
 def spinsample_chain(temperature,J,Nx,Ny,mcsetN):
     """
 
@@ -196,7 +199,7 @@ def spinsample_chain(temperature,J,Nx,Ny,mcsetN):
     spin_sampleset=(2*np.random.binomial(1,p=0.5,size=(mcsetN,10,10))-1)
     MC_Wolff=wolff(temperature,Hamiltonian=Hamiltonian,init_sample=spin_sampleset)
     data_count_init=100
-    spin_chain=MC_Wolff.markov_chain_sample(k=Nx*Ny)
+    spin_chain=MC_Wolff.markov_chain_sample(k=1)
     return spin_chain
 
 
