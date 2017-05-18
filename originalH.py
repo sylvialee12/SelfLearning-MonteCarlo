@@ -137,7 +137,7 @@ class originalH:
         return new_spin_sample
 
     @functimer
-    def spin_chain_generation(self,temperature,init_sampleset,nstep=1000,k=1):
+    def spin_chain_generation(self,temperature,init_sampleset,nstep=2000,k=1):
         """
 
         :return:
@@ -158,12 +158,16 @@ def time_correlation(spin_chainset):
     """
     A method to visualize time correlation of the Markov Chain
     """
-    initsampleset=spin_chainset[0]
-    timecorrelation=[]
-    for sampleset in spin_chainset:
-        timecorrelation.append(np.mean(initsampleset*sampleset)-np.mean(initsampleset)*np.mean(sampleset))
-    return timecorrelation
+    # initsampleset=spin_chainset[0]
+    # timecorrelation=[]
+    # for sampleset in spin_chainset:
+    #     timecorrelation.append(np.mean(initsampleset*sampleset)-np.mean(initsampleset)*np.mean(sampleset))
+    # return timecorrelation
 
+    mz = np.abs(np.mean(spin_chainset,axis=(2,3)))
+    autocorrelation = [np.mean(np.sum(mz[:-j]*mz[j:],axis=0)/(len(mz)-j))
+                       -np.mean(np.mean(mz,axis=0)**2) for j in range(1,100)]
+    return autocorrelation
 
 
 @functimer
