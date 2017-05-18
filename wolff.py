@@ -15,7 +15,7 @@ def functimer(func):
 
 class wolff:
 
-    def __init__(self,temperature,Hamiltonian,init_sample,nsteps=1000):
+    def __init__(self,temperature,Hamiltonian,init_sample,nsteps=2000):
         """
 
         :param temperature:
@@ -46,6 +46,26 @@ class wolff:
         return neighborsites,bond_neighbor
 
 
+    def left_neighbor(self,index_x,index_y):
+        """
+        Find out the left neighbor site
+        :param index_x:
+        :param index_y:
+        :return:
+        """
+
+        return ((index_x+self.Nx-1)%self.Nx,index_y)
+
+    def up_neighbor(self,index_x,index_y):
+        return (index_x,(index_y+1)%self.Ny)
+
+    def right_neighbor(self,index_x,index_y):
+        return (index_x,(index_y+1)%self.Ny)
+
+    def dn_neighbor(self,index_x,index_y):
+        return (index_x,(index_y-1+self.Ny)%self.Ny)
+
+
 
     def single_cluster(self,index_x,index_y,spin_sample,cluster):
         """
@@ -58,14 +78,51 @@ class wolff:
         if (index_x,index_y) not in cluster:
             cluster.append((index_x,index_y))
             if self.pbc==1:
-
                 neighborsites,bond_neighbor=self.bond_neighbor(index_x,index_y,spin_sample)
-                effective_neighborsite=[neighborsites[x] for x in range(4) if neighborsites[x] not in cluster and bond_neighbor[x]==1]
+                effective_neighborsite=[neighborsites[x] for x in range(4)
+                                        if neighborsites[x] not in cluster
+                                        and bond_neighbor[x]==1]
                 if effective_neighborsite==[]:
                     return None
                 else:
                     for site in effective_neighborsite:
                         self.single_cluster(site[0],site[1],spin_sample,cluster)
+
+
+    def cluster_flip_with_stack(self,spin_sample,index_x,index_y):
+        """
+        :param spin_sample:
+        :return:
+        """
+        spin_samplenew = spin_sample.copy()
+        spin_samplenew[index_x,index_y] = -spin_samplenew[index_x,index_y]
+        my_stack = []
+        my_stack2 = [(index_x,index_y)]
+        neighborsites,bond_neighbors = self.bond_neighbor(index_x,index_y,spin_sample)
+        neighbor = [neighborsites[x] for x in range(4) if bond_neighbors[x]==1]
+        while neighbor or my_stack:
+            while neighbor:
+                # for neighbor_i in neighbor:
+                neighbor_i = neighbor[0]
+                my_stack.append(neighbor_i)
+                index_x2,index_y2 = neighbor_i
+                neighborsites,bond_neighbors == self.bond_neighbor(index_x2,index_y2,spin_sample)
+                neighbor = [neighborsites[x] for x in range(4)
+                            if bond_neighbors[x]==1
+                            and neighborsites[x] not in my_stack
+                            and neighborsites[x] not in my_stack2]
+
+            neighbor_i = my_stack.pop()
+            spin_samplenew[neighbor_i[0],neighbor_i[1]] = -spin_samplenew[neighbor_i[0],neighbor_i[1]]
+            my_stack2.append(neighbor_i)
+            neighborsites,bond_neighbors = self.bond_neighbor(neighbor_i[0],neighbor_i[1],spin_sample)
+            neighbor = [neighborsites[x] for x in range(4)
+                        if bond_neighbors[x]==1
+                        and neighborsites[x] not in my_stack
+                        and neighborsites[x] not in my_stack2]
+
+        return spin_samplenew,my_stack2
+
 
 
     def flip_cluster(self,cluster,spin_sample):
@@ -85,13 +142,15 @@ class wolff:
         :return:
         """
 
-        spin_sample_new=[]
+        spin_sample_new = []
         for spin_i in spin_sample:
-            index_x=np.random.randint(0,self.Nx)
-            index_y=np.random.randint(0,self.Ny)
-            cluster=[]
+            index_x = np.random.randint(0,self.Nx)
+            index_y = np.random.randint(0,self.Ny)
+            cluster = []
             self.single_cluster(index_x,index_y,spin_i,cluster)
             spin_sample_new.append(self.flip_cluster(cluster,spin_i))
+            # spin_new,my_stack2 = self.cluster_flip_with_stack(spin_i,index_x,index_y)
+            # spin_sample_new.append(spin_new)
         return np.array(spin_sample_new)
 
     @functimer
@@ -116,8 +175,12 @@ class wolff:
         """
         energy=[]
         for spin_sample in spin_sample_chain:
-            upshift_sample=np.array(list(map(lambda x:np.concatenate((x[1:,:],self.pbc*np.expand_dims(x[0,:],axis=0)),axis=0),spin_sample)))
-            leftshift_sample=np.array(list(map(lambda x:np.concatenate((x[:,1:],self.pbc*np.expand_dims(x[:,0],axis=1)),axis=1),spin_sample)))
+            upshift_sample=np.array(list(map(lambda x:
+                                             np.concatenate((x[1:,:],self.pbc*np.expand_dims(x[0,:],axis=0)),axis=0),
+                                             spin_sample)))
+            leftshift_sample=np.array(list(map(lambda x:
+                                               np.concatenate((x[:,1:],self.pbc*np.expand_dims(x[:,0],axis=1)),axis=1),
+                                               spin_sample)))
             energy.append(np.mean(-self.J*(upshift_sample*spin_sample+leftshift_sample*spin_sample)))
         return energy
 
@@ -127,8 +190,10 @@ class wolff:
         :param spin_sample:
         :return:
         """
-        left_shiftk_sampleset=np.array([np.concatenate((spin_sample[k:,:],self.pbc*spin_sample[0:k,:]),axis=0) for spin_sample in spin_sampleset])
-        up_shiftk_sampleset=np.array([np.concatenate((spin_sample[:,k:],self.pbc*spin_sample[:,0:k]),axis=1) for spin_sample in spin_sampleset])
+        left_shiftk_sampleset=np.array([np.concatenate((spin_sample[k:,:],self.pbc*spin_sample[0:k,:]),axis=0)
+                                        for spin_sample in spin_sampleset])
+        up_shiftk_sampleset=np.array([np.concatenate((spin_sample[:,k:],self.pbc*spin_sample[:,0:k]),axis=1)
+                                      for spin_sample in spin_sampleset])
         correlation=np.mean(left_shiftk_sampleset*spin_sampleset+up_shiftk_sampleset*spin_sampleset)
         return correlation
 
@@ -138,9 +203,12 @@ class wolff:
         :param spin_sample:
         :return:
         """
-        left_shift_sampleset=np.array([np.concatenate((spin_sample[1:,:],self.pbc*spin_sample[0:1,:]),axis=0) for spin_sample in spin_sampleset])
-        up_leftshift_sampleset=np.array([np.concatenate((left_shift_sample[:,1:],self.pbc*left_shift_sample[:,0:1]),axis=1) for left_shift_sample in left_shift_sampleset])
-        dn_leftshift_sampleset=np.array([np.concatenate((left_shift_sample[:,-1:],left_shift_sample[:,:-1]),axis=1) for left_shift_sample in left_shift_sampleset])
+        left_shift_sampleset=np.array([np.concatenate((spin_sample[1:,:],self.pbc*spin_sample[0:1,:]),axis=0)
+                                       for spin_sample in spin_sampleset])
+        up_leftshift_sampleset=np.array([np.concatenate((left_shift_sample[:,1:],self.pbc*left_shift_sample[:,0:1]),axis=1)
+                                         for left_shift_sample in left_shift_sampleset])
+        dn_leftshift_sampleset=np.array([np.concatenate((left_shift_sample[:,-1:],left_shift_sample[:,:-1]),axis=1)
+                                         for left_shift_sample in left_shift_sampleset])
         correlation=np.mean(spin_sampleset*up_leftshift_sampleset+spin_sampleset*dn_leftshift_sampleset)
         return correlation
 
@@ -208,9 +276,9 @@ def spinsample_chain(temperature,J,Nx,Ny,mcsetN):
 def main():
     Hamiltonian=Ising2D.Ising2D(nxspins=10,nyspins=10,J=1,hfield=0)
     spin_sample=(2*np.random.binomial(1,p=0.5,size=(1,10,10))-1)
-    MC_Ising2D=wolff(temperature=0.5,Hamiltonian=Hamiltonian,init_sample=spin_sample)
+    MC_Ising2D=wolff(temperature=2,Hamiltonian=Hamiltonian,init_sample=spin_sample)
     spin_sample_chain=MC_Ising2D.markov_chain_sample()
-    energy,energy_erro=MC_Ising2D.measure_energy(Hamiltonian,spin_sample_chain)
+    energy=MC_Ising2D.measure_energy(spin_sample_chain)
     magnetization=MC_Ising2D.measure_magnetization(spin_sample_chain)
     plt.figure("Energy")
     plt.plot(energy)
@@ -222,18 +290,6 @@ def main():
 
 if __name__=="__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
